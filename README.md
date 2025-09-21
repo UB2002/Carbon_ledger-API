@@ -47,12 +47,7 @@ Follow these instructions to build and run the application and its database usin
 
 The current design does not generate the same ID for the same input. Instead, it uses a standard database-driven approach for ensuring unique record identification.
 
-The `Record.id` column is defined as an `Integer` primary key:
-```python
-# d:\backend\backend\models\table.py
-id = Column(Integer, primary_key=True, index=True)
-```
-When a new record is inserted, the PostgreSQL database automatically assigns a new, unique, and sequentially increasing integer. This guarantees that every record is unique, but it means that creating two records with identical data (e.g., same `project_name`, `quantity`, etc.) will result in two distinct records with different IDs.
+The `Record.id` column is defined as an `Integer` primary key, When a new record is inserted, the PostgreSQL database automatically assigns a new, unique, and sequentially increasing integer. This guarantees that every record is unique, but it means that creating two records with identical data (e.g., same `project_name`, `quantity`, etc.) will result in two distinct records with different IDs.
 
 If the requirement were to have a deterministic ID based on the input, one would typically use a hashing algorithm (e.g., SHA-256) on a concatenated string of the input fields that define uniqueness. However, this approach was not used here in favor of the simplicity and performance of auto-incrementing integers.
 
@@ -80,7 +75,6 @@ The result is that the same carbon credit is retired twice, leading to two "reti
 The issue is already solved in the `retire_record` function by using a **pessimistic lock**.
 
 ```python
-# d:\backend\backend\routes\recordRoute.py
 record = db.query(Record).filter(Record.id == record_id).with_for_update().first()
 ```
 
