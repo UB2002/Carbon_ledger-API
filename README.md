@@ -12,7 +12,7 @@ Follow these instructions to build and run the application and its database usin
 1.  **Clone the Repository**
 
     ```bash
-    git clone <your-repository-url>
+    git clone https://github.com/UB2002/Carbon_ledger-API.git
     cd backend
     ```
 
@@ -34,13 +34,6 @@ Follow these instructions to build and run the application and its database usin
     ```bash
     docker-compose up --build -d
     ```
-
-    This command will:
-    -   Build the Docker image for the FastAPI application.
-    -   Pull the official PostgreSQL image.
-    -   Start both containers and connect them on a shared network.
-    -   The `-d` flag runs the containers in detached mode.
-
 4.  **Accessing the API**
 
     -   The API will be available at `http://localhost:8000`.
@@ -83,7 +76,6 @@ This scenario describes a classic **race condition**. Without a proper locking m
 
 The result is that the same carbon credit is retired twice, leading to two "retired" events in the log for a single credit. This corrupts the data and violates the fundamental business rule that a credit can only be retired once.
 
-**How It Is Fixed in This Code:**
 
 The issue is already solved in the `retire_record` function by using a **pessimistic lock**.
 
@@ -93,11 +85,5 @@ record = db.query(Record).filter(Record.id == record_id).with_for_update().first
 ```
 
 The `.with_for_update()` method tells SQLAlchemy to issue a `SELECT ... FOR UPDATE` SQL statement. This instructs the database to lock the row(s) matching the query for the duration of the transaction.
-
-1.  **Request A**'s transaction starts and executes the `SELECT ... FOR UPDATE`, locking the record's row in the database.
-2.  **Request B**'s transaction attempts the same query but is forced to wait because the row is locked by Request A.
-3.  Request A checks for a "retired" event (finds none), adds a new one, and commits. The transaction ends, and the lock is released.
-4.  **Request B**'s query now executes. It fetches the record, which *now includes the "retired" event* created by Request A.
-5.  Request B's check `if any(e.event_type == "retired" for e in record.events)` evaluates to `True`, and it correctly raises an `HTTPException` for an already retired record.
 
 This mechanism ensures atomicity and prevents the race condition, guaranteeing that only the first request can successfully retire the credit.
